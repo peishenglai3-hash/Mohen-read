@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>墨痕 — 个人阅读记录与成长追踪</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=ZCOOL+XiaoWei&family=Ma+Shan+Zheng&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#faf6f0;--bg-warm:#f5efe6;--bg-card:#fffdf9;--bg-sidebar:#3c3228;
+  --ink:#2c2418;--ink-light:#6b5d4f;--ink-muted:#a89882;
+  --accent:#5a7247;--accent-light:#7d9a68;--accent-glow:rgba(90,114,71,.12);
+  --brown:#8b6914;--brown-light:#c4a35a;--brown-glow:rgba(139,105,20,.1);
+  --terracotta:#b5694d;--terracotta-light:#d4936f;
+  --border:#e5ddd2;--border-light:#ede7dd;
+  --shadow:0 2px 16px rgba(44,36,24,.07);--shadow-lg:0 8px 32px rgba(44,36,24,.1);
+  --radius:10px;--radius-lg:16px;--sidebar-w:260px;
+  --font-display:'ZCOOL XiaoWei',serif;--font-body:'Noto Serif SC',serif;
+  --font-accent:'Crimson Pro',serif;--font-brush:'Ma Shan Zheng',cursive;
+}
+html{font-size:15px;scroll-behavior:smooth}
+body{font-family:var(--font-body);color:var(--ink);background:var(--bg);min-height:100vh;display:flex;overflow-x:hidden}
+a{color:var(--accent);text-decoration:none}
+input,textarea,select,button{font-family:inherit;font-size:inherit;border:none;outline:none;background:none}
+button{cursor:pointer}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+.sidebar{
+  position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);
+  background:var(--bg-sidebar);color:#e8e0d4;
+  display:flex;flex-direction:column;z-index:100;
+  transition:transform .4s cubic-bezier(.4,0,.2,1);
+}
+.sidebar-header{padding:32px 24px 24px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-brand{font-family:var(--font-brush);font-size:2rem;letter-spacing:.05em;color:#f5efe6}
+.sidebar-subtitle{font-family:var(--font-accent);font-size:.8rem;color:rgba(255,255,255,.4);margin-top:4px;font-style:italic}
+.sidebar-nav{flex:1;padding:16px 12px;overflow-y:auto}
+.nav-item{
+  display:flex;align-items:center;gap:12px;padding:12px 16px;
+  border-radius:var(--radius);color:rgba(255,255,255,.6);
+  font-size:.9rem;transition:all .25s ease;cursor:pointer;margin-bottom:2px;
+  position:relative;overflow:hidden;
+}
+.nav-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent-light);border-radius:0 2px 2px 0;transform:scaleY(0);transition:transform .25s ease}
+.nav-item:hover{color:rgba(255,255,255,.9);background:rgba(255,255,255,.05)}
+.nav-item.active{color:#f5efe6;background:rgba(255,255,255,.08)}
+.nav-item.active::before{transform:scaleY(1)}
+.nav-icon{font-size:1.15rem;width:24px;text-align:center;flex-shrink:0}
+.sidebar-footer{padding:16px 24px;border-top:1px solid rgba(255,255,255,.06);font-size:.75rem;color:rgba(255,255,255,.25);font-family:var(--font-accent)}
+.mobile-toggle{
+  display:none;position:fixed;top:16px;left:16px;z-index:200;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--bg-sidebar);color:#e8e0d4;
+  font-size:1.2rem;align-items:center;justify-content:center;box-shadow:var(--shadow-lg);
+}
+
+.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;position:relative}
+.page{display:none;padding:40px 48px 60px;max-width:1100px;animation:pageIn .5s ease}
+.page.active{display:block}
+@keyframes pageIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.page-header{margin-bottom:36px}
+.page-title{font-family:var(--font-display);font-size:1.8rem;color:var(--ink);position:relative;display:inline-block}
+.page-title::after{content:'';position:absolute;bottom:-6px;left:0;width:40px;height:3px;background:linear-gradient(90deg,var(--accent),transparent);border-radius:2px}
+.page-desc{color:var(--ink-muted);font-size:.85rem;margin-top:12px;line-height:1.7;font-family:var(--font-accent);font-style:italic}
+
+.book-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.book-card{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:24px;position:relative;overflow:hidden;transition:all .3s ease;cursor:pointer}
+.book-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--brown-light));opacity:0;transition:opacity .3s ease}
+.book-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.book-card:hover::before{opacity:1}
+.book-status-dot{width:8px;height:8px;border-radius:50%;position:absolute;top:16px;right:16px}
+.book-status-dot.want{background:#c4a35a}.book-status-dot.reading{background:var(--accent)}.book-status-dot.done{background:var(--terracotta)}
+.book-title-text{font-family:var(--font-display);font-size:1.15rem;margin-bottom:6px;line-height:1.4}
+.book-author{color:var(--ink-light);font-size:.82rem;margin-bottom:12px;font-family:var(--font-accent);font-style:italic}
+.book-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.book-tag{font-size:.72rem;padding:3px 10px;border-radius:20px;background:var(--accent-glow);color:var(--accent)}
+.book-tag.genre{background:var(--brown-glow);color:var(--brown)}
+.book-stars{color:var(--brown-light);font-size:.85rem;letter-spacing:2px}
+.book-dates{font-size:.75rem;color:var(--ink-muted);margin-top:8px}
+.book-actions{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-light)}
+.book-actions button{flex:1;padding:6px 0;border-radius:6px;font-size:.78rem;transition:all .2s ease;color:var(--ink-light)}
+.book-actions button:hover{background:var(--accent-glow);color:var(--accent)}
+.book-actions button.danger:hover{background:rgba(181,105,77,.1);color:var(--terracotta)}
+
+.filter-bar{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;align-items:center}
+.filter-btn{padding:6px 16px;border-radius:20px;font-size:.8rem;color:var(--ink-muted);border:1px solid var(--border);transition:all .2s ease}
+.filter-btn:hover,.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.search-input{padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);font-size:.85rem;width:200px;transition:all .25s ease}
+.search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);width:260px}
+
+.form-card{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:36px;max-width:640px}
+.form-group{margin-bottom:20px}
+.form-label{display:block;font-size:.82rem;color:var(--ink-light);margin-bottom:6px;font-weight:500}
+.form-input,.form-select,.form-textarea{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);font-size:.9rem;transition:all .25s ease;color:var(--ink)}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.form-textarea{resize:vertical;min-height:100px;line-height:1.7}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.star-input{display:flex;gap:4px;font-size:1.4rem;cursor:pointer}
+.star-input span{color:var(--border);transition:color .15s ease}
+.star-input span.active{color:var(--brown-light)}
+.star-input span:hover{color:var(--brown)}
+.btn{padding:10px 28px;border-radius:var(--radius);font-size:.88rem;font-weight:500;transition:all .25s ease;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-light);transform:translateY(-1px);box-shadow:0 4px 12px var(--accent-glow)}
+.btn-secondary{border:1px solid var(--border);color:var(--ink-light)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:var(--terracotta);color:#fff}
+.btn-danger:hover{background:var(--terracotta-light)}
+.form-actions{display:flex;gap:12px;margin-top:28px}
+
+.notes-layout{display:grid;grid-template-columns:320px 1fr;gap:24px;min-height:60vh}
+.notes-list{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column}
+.notes-list-header{padding:16px 20px;border-bottom:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center}
+.notes-list-header h3{font-family:var(--font-display);font-size:1rem}
+.notes-items{overflow-y:auto;flex:1}
+.note-item{padding:14px 20px;border-bottom:1px solid var(--border-light);cursor:pointer;transition:all .2s ease;position:relative}
+.note-item:hover{background:var(--accent-glow)}
+.note-item.active{background:var(--accent-glow);border-left:3px solid var(--accent)}
+.note-item-title{font-size:.88rem;font-weight:500;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note-item-meta{font-size:.72rem;color:var(--ink-muted);display:flex;gap:8px}
+.note-item-preview{font-size:.78rem;color:var(--ink-light);margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.note-editor{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:28px;display:flex;flex-direction:column}
+.note-editor-title{font-family:var(--font-display);font-size:1.3rem;border:none;background:none;width:100%;padding-bottom:12px;border-bottom:1px solid var(--border-light);color:var(--ink)}
+.note-editor-title::placeholder{color:var(--ink-muted)}
+.note-editor-meta{display:flex;gap:12px;align-items:center;padding:12px 0;font-size:.8rem;color:var(--ink-muted);flex-wrap:wrap}
+.note-editor-body{flex:1;border:none;background:none;resize:none;font-size:.92rem;line-height:1.9;color:var(--ink);min-height:300px;padding-top:12px}
+.note-editor-body::placeholder{color:var(--ink-muted)}
+.note-editor-actions{display:flex;gap:10px;justify-content:flex-end;padding-top:16px;border-top:1px solid var(--border-light);margin-top:auto}
+.note-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink-muted);font-size:.9rem;padding:40px}
+.note-empty-icon{font-size:3rem;margin-bottom:12px;opacity:.3}
+
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px}
+.stat-card{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:20px 24px;text-align:center}
+.stat-number{font-family:var(--font-accent);font-size:2.2rem;font-weight:600;color:var(--accent)}
+.stat-label{font-size:.78rem;color:var(--ink-muted);margin-top:4px}
+.chart-container{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:24px;margin-bottom:24px}
+.chart-title{font-family:var(--font-display);font-size:1.05rem;margin-bottom:16px;color:var(--ink)}
+.chart-box{width:100%;height:320px}
+
+.timeline{position:relative;padding-left:32px}
+.timeline::before{content:'';position:absolute;left:11px;top:0;bottom:0;width:2px;background:var(--border)}
+.timeline-item{position:relative;margin-bottom:28px;animation:fadeSlideIn .5s ease both}
+.timeline-item::before{content:'';position:absolute;left:-32px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);box-shadow:0 0 0 2px var(--accent-glow)}
+.timeline-item.note-type::before{background:var(--brown-light)}
+.timeline-date{font-size:.75rem;color:var(--ink-muted);margin-bottom:4px;font-family:var(--font-accent)}
+.timeline-content{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius);padding:16px 20px}
+.timeline-content h4{font-size:.92rem;margin-bottom:4px}
+.timeline-content p{font-size:.82rem;color:var(--ink-light);line-height:1.6}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+
+.data-section{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:28px;margin-bottom:20px;max-width:640px}
+.data-section h3{font-family:var(--font-display);font-size:1.05rem;margin-bottom:8px}
+.data-section p{font-size:.82rem;color:var(--ink-muted);margin-bottom:16px;line-height:1.6}
+.file-input-wrapper{position:relative;display:inline-block}
+.file-input-wrapper input[type=file]{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(44,36,24,.5);backdrop-filter:blur(4px);z-index:300;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg-card);border-radius:var(--radius-lg);width:90%;max-width:560px;max-height:80vh;overflow-y:auto;padding:32px;box-shadow:var(--shadow-lg);animation:modalIn .35s cubic-bezier(.4,0,.2,1)}
+@keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+.toast{position:fixed;bottom:24px;right:24px;z-index:400;background:var(--bg-sidebar);color:#e8e0d4;padding:12px 24px;border-radius:var(--radius);font-size:.85rem;box-shadow:var(--shadow-lg);transform:translateY(80px);opacity:0;transition:all .35s cubic-bezier(.4,0,.2,1)}
+.toast.show{transform:translateY(0);opacity:1}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--ink-muted)}
+.empty-state-icon{font-size:3.5rem;opacity:.25;margin-bottom:12px}
+.empty-state p{font-size:.88rem;line-height:1.7}
+
+/* Calendar */
+.calendar-wrap{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:28px;max-width:800px}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.cal-header h3{font-family:var(--font-display);font-size:1.15rem}
+.cal-nav{display:flex;gap:8px}
+.cal-nav button{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;color:var(--ink-light);border:1px solid var(--border);transition:all .2s ease}
+.cal-nav button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-dow{text-align:center;font-size:.72rem;color:var(--ink-muted);padding:8px 0;font-weight:500}
+.cal-day{
+  aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:var(--radius);font-size:.82rem;color:var(--ink-light);
+  position:relative;cursor:default;transition:all .2s ease;
+}
+.cal-day.other{color:var(--border);opacity:.5}
+.cal-day.today{font-weight:700;color:var(--accent);background:var(--accent-glow)}
+.cal-day.has-event{cursor:pointer;font-weight:500;color:var(--ink)}
+.cal-day.has-event:hover{background:var(--bg-warm)}
+.cal-day .cal-dots{display:flex;gap:3px;margin-top:3px;min-height:6px}
+.cal-day .cal-dot{width:5px;height:5px;border-radius:50%}
+.cal-dot.book-dot{background:var(--accent)}
+.cal-dot.note-dot{background:var(--brown-light)}
+.cal-legend{display:flex;gap:16px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border-light);font-size:.75rem;color:var(--ink-muted)}
+.cal-legend span{display:flex;align-items:center;gap:5px}
+.cal-legend span::before{content:'';width:8px;height:8px;border-radius:50%}
+.cal-legend .leg-book::before{background:var(--accent)}
+.cal-legend .leg-note::before{background:var(--brown-light)}
+.cal-day-detail{margin-top:20px;padding-top:20px;border-top:1px solid var(--border-light)}
+.cal-day-detail h4{font-family:var(--font-display);font-size:.95rem;margin-bottom:12px}
+.cal-detail-item{padding:10px 14px;background:var(--bg);border-radius:var(--radius);margin-bottom:8px;font-size:.82rem;line-height:1.5}
+.cal-detail-item .cal-detail-type{font-size:.7rem;padding:2px 8px;border-radius:10px;margin-right:6px;display:inline-block}
+.cal-detail-item .type-book{background:var(--accent-glow);color:var(--accent)}
+.cal-detail-item .type-note{background:var(--brown-glow);color:var(--brown)}
+
+/* Genre chips */
+.genre-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.genre-chip{
+  font-size:.72rem;padding:4px 12px;border-radius:20px;
+  border:1px solid var(--border);color:var(--ink-muted);
+  transition:all .2s ease;cursor:pointer;white-space:nowrap;
+}
+.genre-chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+.genre-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Genre filter on bookshelf */
+.genre-filter-bar{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;overflow-x:auto;padding-bottom:4px}
+.genre-filter-chip{
+  font-size:.72rem;padding:4px 12px;border-radius:16px;
+  background:var(--bg-card);border:1px solid var(--border-light);color:var(--ink-muted);
+  cursor:pointer;transition:all .2s ease;white-space:nowrap;flex-shrink:0;
+}
+.genre-filter-chip:hover{border-color:var(--brown);color:var(--brown)}
+.genre-filter-chip.active{background:var(--brown);color:#fff;border-color:var(--brown)}
+
+@media(max-width:900px){.notes-layout{grid-template-columns:1fr}.notes-list{max-height:300px}}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}
+  .mobile-toggle{display:flex}.main{margin-left:0}
+  .page{padding:24px 20px 40px}.book-grid{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr 1fr}.chart-box{height:250px}
+  .charts-row{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-brand">墨 痕</div>
+    <div class="sidebar-subtitle">Reading · Thinking · Growing</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-page="bookshelf"><span class="nav-icon">📚</span>我的书架</div>
+    <div class="nav-item" data-page="add-book"><span class="nav-icon">✒</span>添加书籍</div>
+    <div class="nav-item" data-page="notes"><span class="nav-icon">📝</span>随笔本</div>
+    <div class="nav-item" data-page="calendar"><span class="nav-icon">📅</span>阅读日历</div>
+    <div class="nav-item" data-page="stats"><span class="nav-icon">📊</span>阅读统计</div>
+    <div class="nav-item" data-page="data"><span class="nav-icon">💾</span>数据管理</div>
+  </nav>
+  <div class="sidebar-footer">"A reader lives a thousand lives."</div>
+</aside>
+
+<main class="main">
+  <!-- 书架 -->
+  <section class="page active" id="page-bookshelf">
+    <div class="page-header"><h1 class="page-title">我的书架</h1><p class="page-desc">All the books that shaped your mind</p></div>
+    <div class="filter-bar">
+      <button class="filter-btn active" data-filter="all">全部</button>
+      <button class="filter-btn" data-filter="want">想读</button>
+      <button class="filter-btn" data-filter="reading">在读</button>
+      <button class="filter-btn" data-filter="done">已读</button>
+      <input type="text" class="search-input" id="bookSearch" placeholder="搜索书名或作者...">
+    </div>
+    <div class="genre-filter-bar" id="genreFilterBar"></div>
+    <div class="book-grid" id="bookGrid"></div>
+    <div class="empty-state" id="emptyBookshelf" style="display:none"><div class="empty-state-icon">📖</div><p>书架空空如也<br>点击左侧「添加书籍」开始记录你的阅读旅程</p></div>
+  </section>
+
+  <!-- 添加/编辑书籍 -->
+  <section class="page" id="page-add-book">
+    <div class="page-header"><h1 class="page-title" id="formPageTitle">添加书籍</h1><p class="page-desc">Record a new companion on your reading journey</p></div>
+    <div class="form-card">
+      <input type="hidden" id="editBookId">
+      <div class="form-group"><label class="form-label">书名 *</label><input type="text" class="form-input" id="bookTitle" placeholder="输入书名"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">作者</label><input type="text" class="form-input" id="bookAuthor" placeholder="输入作者"></div>
+        <div class="form-group"><label class="form-label">题材/分类</label>
+          <div class="genre-presets" id="genrePresets"></div>
+          <input type="text" class="form-input" id="bookGenre" placeholder="选择上方标签或自定义输入">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">页数</label><input type="number" class="form-input" id="bookPages" placeholder="页数"></div>
+        <div class="form-group"><label class="form-label">阅读状态</label><select class="form-select" id="bookStatus"><option value="want">想读</option><option value="reading">在读</option><option value="done">已读</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">开始日期</label><input type="date" class="form-input" id="bookStartDate"></div>
+        <div class="form-group"><label class="form-label">完成日期</label><input type="date" class="form-input" id="bookEndDate"></div>
+      </div>
+      <div class="form-group"><label class="form-label">个人评分</label><div class="star-input" id="starInput"><span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span></div></div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="saveBookBtn">保存书籍</button>
+        <button class="btn btn-secondary" id="cancelEditBtn" style="display:none" onclick="cancelEdit()">取消编辑</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 随笔本 -->
+  <section class="page" id="page-notes">
+    <div class="page-header"><h1 class="page-title">随笔本</h1><p class="page-desc">Capture your thoughts as they come</p></div>
+    <div class="notes-layout">
+      <div class="notes-list">
+        <div class="notes-list-header"><h3>笔记列表</h3><button class="btn btn-primary" style="padding:6px 14px;font-size:.78rem" onclick="createNewNote()">+ 新随笔</button></div>
+        <div class="notes-items" id="notesList"></div>
+      </div>
+      <div class="note-editor">
+        <div class="note-empty" id="noteEmpty"><div class="note-empty-icon">✍</div><p>选择一篇笔记或创建新随笔</p></div>
+        <div id="noteEditorContent" style="display:none;flex-direction:column;flex:1">
+          <input type="text" class="note-editor-title" id="noteTitle" placeholder="随笔标题...">
+          <div class="note-editor-meta">
+            <span id="noteDate"></span>
+            <select class="form-select" id="noteBookLink" style="width:auto;padding:4px 10px;font-size:.78rem;border-radius:6px;border:1px solid var(--border)"><option value="">不关联书籍</option></select>
+          </div>
+          <textarea class="note-editor-body" id="noteBody" placeholder="写下你的思考..."></textarea>
+          <div class="note-editor-actions">
+            <button class="btn btn-secondary" style="padding:6px 16px;font-size:.8rem" onclick="deleteCurrentNote()">删除</button>
+            <button class="btn btn-primary" style="padding:6px 16px;font-size:.8rem" onclick="saveCurrentNote()">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 阅读日历 -->
+  <section class="page" id="page-calendar">
+    <div class="page-header"><h1 class="page-title">阅读日历</h1><p class="page-desc">Track your reading rhythm day by day</p></div>
+    <div class="calendar-wrap">
+      <div class="cal-header">
+        <div class="cal-nav"><button onclick="calNav(-1)">‹</button></div>
+        <h3 id="calTitle"></h3>
+        <div class="cal-nav"><button onclick="calNav(1)">›</button><button onclick="calToday()" style="font-size:.7rem;width:auto;padding:0 10px;border-radius:14px">今天</button></div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span class="leg-book">书籍活动</span>
+        <span class="leg-note">随笔记录</span>
+      </div>
+      <div class="cal-day-detail" id="calDetail" style="display:none">
+        <h4 id="calDetailTitle"></h4>
+        <div id="calDetailList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 阅读统计 -->
+  <section class="page" id="page-stats">
+    <div class="page-header"><h1 class="page-title">阅读统计</h1><p class="page-desc">Review your journey through books and ideas</p></div>
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="chart-container"><div class="chart-title">月度阅读量</div><div class="chart-box" id="monthlyChart"></div></div>
+    <div class="charts-row" style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+      <div class="chart-container"><div class="chart-title">题材分布</div><div class="chart-box" id="genreChart"></div></div>
+      <div class="chart-container"><div class="chart-title">评分分布</div><div class="chart-box" id="ratingChart"></div></div>
+    </div>
+    <div class="chart-container">
+      <div class="chart-title">阅读与思考时间线</div>
+      <div class="timeline" id="timeline"></div>
+      <div class="empty-state" id="emptyTimeline" style="display:none;padding:30px"><p>还没有阅读记录，开始添加书籍吧</p></div>
+    </div>
+  </section>
+
+  <!-- 数据管理 -->
+  <section class="page" id="page-data">
+    <div class="page-header"><h1 class="page-title">数据管理</h1><p class="page-desc">Export, import, or reset your reading data</p></div>
+    <div class="data-section"><h3>导出数据</h3><p>将所有书籍和笔记数据导出为 JSON 文件，可用于备份或迁移到其他浏览器。</p><button class="btn btn-primary" onclick="exportData()">导出 JSON</button></div>
+    <div class="data-section"><h3>导入数据</h3><p>从 JSON 文件导入数据，与现有数据合并（不覆盖已有记录）。</p><div class="file-input-wrapper"><button class="btn btn-secondary">选择文件并导入</button><input type="file" accept=".json" onchange="importData(event)"></div></div>
+    <div class="data-section"><h3>清空数据</h3><p>删除所有书籍和笔记数据。此操作不可恢复，请先导出备份。</p><button class="btn btn-danger" onclick="clearAllData()">清空所有数据</button></div>
+    <div class="data-section" style="background:var(--accent-glow);border-color:var(--accent)">
+      <h3>数据存储说明</h3>
+      <p style="color:var(--ink-light)">当前数据保存在浏览器本地存储（localStorage）中，刷新页面不会丢失。<br>建议定期导出备份，清除浏览器数据会导致记录丢失。<br>后续版本将支持云端账号同步。</p>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<div class="modal-overlay" id="bookModal"><div class="modal" id="bookModalContent"></div></div>
+<script>
+// ========== 数据层 (localStorage) ==========
+const DB = {
+  _key: 'mohen_reading',
+  load() { try { return JSON.parse(localStorage.getItem(this._key)) || {books:[],notes:[]}; } catch { return {books:[],notes:[]}; } },
+  save(d) { localStorage.setItem(this._key, JSON.stringify(d)); },
+  get books() { return this.load().books; },
+  get notes() { return this.load().notes; },
+  saveBooks(b) { const d=this.load(); d.books=b; this.save(d); },
+  saveNotes(n) { const d=this.load(); d.notes=n; this.save(d); }
+};
+
+// ========== 工具函数 ==========
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function fmtDate(d){return d?new Date(d).toLocaleDateString('zh-CN'):''}
+function statusText(s){return{want:'想读',reading:'在读',done:'已读'}[s]||s}
+function starsHtml(n){return '★'.repeat(n)+'☆'.repeat(5-n)}
+function $(id){return document.getElementById(id)}
+
+// ========== 题材分类系统 ==========
+const GENRES=['小说','历史','传记','哲学','科技','经济','心理学','社会学','文学','诗歌','艺术','政治','自然科学','计算机','教育','宗教','旅行','散文','悬疑推理','科幻奇幻'];
+let genreFilter='';
+
+function renderGenrePresets(){
+  const el=$('genrePresets');
+  el.innerHTML=GENRES.map(g=>`<span class="genre-chip" onclick="pickGenre(this,'${g}')">${g}</span>`).join('');
+}
+function pickGenre(el,g){
+  const input=$('bookGenre');
+  if(input.value===g){input.value='';el.classList.remove('active')}
+  else{input.value=g;document.querySelectorAll('#genrePresets .genre-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active')}
+}
+function syncGenreChipState(){
+  const v=$('bookGenre').value;
+  document.querySelectorAll('#genrePresets .genre-chip').forEach(c=>c.classList.toggle('active',c.textContent===v));
+}
+function renderGenreFilterBar(){
+  const books=DB.books,genres=[...new Set(books.map(b=>b.genre).filter(Boolean))].sort();
+  const bar=$('genreFilterBar');
+  if(!genres.length){bar.innerHTML='';return}
+  bar.innerHTML=`<span class="genre-filter-chip ${genreFilter===''?'active':''}" onclick="setGenreFilter('')">全部题材</span>`+
+    genres.map(g=>`<span class="genre-filter-chip ${genreFilter===g?'active':''}" onclick="setGenreFilter('${esc(g)}')">${esc(g)}</span>`).join('');
+}
+function setGenreFilter(g){genreFilter=g;renderGenreFilterBar();renderBookshelf()}
+
+// ========== 导航 ==========
+let curPage='bookshelf', bookFilter='all', bookSearch='', curRating=0, curNoteId=null;
+
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click',()=>{
+    nav(item.dataset.page);
+    document.querySelector('.sidebar').classList.remove('open');
+  });
+});
+
+function nav(page){
+  curPage=page;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  $('page-'+page).classList.add('active');
+  if(page==='bookshelf'){renderGenreFilterBar();renderBookshelf()}
+  if(page==='notes'){refreshNoteBookLinks();renderNotesList()}
+  if(page==='calendar')renderCalendar();
+  if(page==='stats')renderStats();
+  if(page==='add-book'){if(!$('editBookId').value)resetBookForm();renderGenrePresets();syncGenreChipState()}
+}
+
+// ========== 书架 ==========
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');bookFilter=btn.dataset.filter;renderBookshelf();
+  });
+});
+$('bookSearch').addEventListener('input',e=>{bookSearch=e.target.value.toLowerCase();renderBookshelf()});
+$('bookGenre').addEventListener('input',syncGenreChipState);
+
+function renderBookshelf(){
+  let books=DB.books;
+  if(bookFilter!=='all')books=books.filter(b=>b.status===bookFilter);
+  if(genreFilter)books=books.filter(b=>b.genre===genreFilter);
+  if(bookSearch)books=books.filter(b=>b.title.toLowerCase().includes(bookSearch)||(b.author||'').toLowerCase().includes(bookSearch));
+  const grid=$('bookGrid'),empty=$('emptyBookshelf');
+  if(!books.length){grid.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  grid.innerHTML=books.map((b,i)=>`
+    <div class="book-card" style="animation-delay:${i*.06}s" onclick="showBookDetail('${b.id}')">
+      <div class="book-status-dot ${b.status}"></div>
+      <div class="book-title-text">${esc(b.title)}</div>
+      <div class="book-author">${esc(b.author||'未知作者')}</div>
+      <div class="book-meta">
+        <span class="book-tag">${statusText(b.status)}</span>
+        ${b.genre?`<span class="book-tag genre">${esc(b.genre)}</span>`:''}
+        ${b.pages?`<span class="book-tag">${b.pages}页</span>`:''}
+      </div>
+      ${b.rating?`<div class="book-stars">${starsHtml(b.rating)}</div>`:''}
+      ${b.startDate||b.endDate?`<div class="book-dates">${b.startDate?fmtDate(b.startDate):''} ${b.endDate?'— '+fmtDate(b.endDate):''}</div>`:''}
+      <div class="book-actions" onclick="event.stopPropagation()">
+        <button onclick="editBook('${b.id}')">编辑</button>
+        <button onclick="writeNoteFor('${b.id}')">写随笔</button>
+        <button class="danger" onclick="deleteBook('${b.id}')">删除</button>
+      </div>
+    </div>`).join('');
+}
+
+// ========== 书籍详情弹窗 ==========
+function showBookDetail(id){
+  const b=DB.books.find(x=>x.id===id);if(!b)return;
+  const notes=DB.notes.filter(n=>n.bookId===id);
+  $('bookModalContent').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+      <div><div style="font-family:var(--font-display);font-size:1.4rem;margin-bottom:4px">${esc(b.title)}</div>
+      <div style="color:var(--ink-light);font-family:var(--font-accent);font-style:italic">${esc(b.author||'未知作者')}</div></div>
+      <button onclick="closeModal()" style="font-size:1.2rem;color:var(--ink-muted);padding:4px">✕</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      <span class="book-tag">${statusText(b.status)}</span>
+      ${b.genre?`<span class="book-tag genre">${esc(b.genre)}</span>`:''}
+      ${b.pages?`<span class="book-tag">${b.pages}页</span>`:''}
+    </div>
+    ${b.rating?`<div style="margin-bottom:12px"><span class="book-stars" style="font-size:1.1rem">${starsHtml(b.rating)}</span></div>`:''}
+    ${b.startDate||b.endDate?`<div style="font-size:.82rem;color:var(--ink-muted);margin-bottom:16px">${b.startDate?'开始：'+fmtDate(b.startDate):''} ${b.endDate?'&nbsp;完成：'+fmtDate(b.endDate):''}</div>`:''}
+    ${notes.length?`<div style="border-top:1px solid var(--border-light);padding-top:16px;margin-top:8px">
+      <div style="font-size:.88rem;font-weight:500;margin-bottom:12px">相关随笔 (${notes.length})</div>
+      ${notes.map(n=>`<div style="background:var(--bg);padding:12px 16px;border-radius:var(--radius);margin-bottom:8px;cursor:pointer" onclick="closeModal();openNoteById('${n.id}')">
+        <div style="font-size:.85rem;font-weight:500">${esc(n.title||'无标题')}</div>
+        <div style="font-size:.75rem;color:var(--ink-muted);margin-top:2px">${fmtDate(n.date)}</div>
+      </div>`).join('')}</div>`:'<div style="font-size:.82rem;color:var(--ink-muted);margin-top:12px;border-top:1px solid var(--border-light);padding-top:16px">暂无相关随笔</div>'}`;
+  $('bookModal').classList.add('show');
+}
+function closeModal(){$('bookModal').classList.remove('show')}
+$('bookModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+
+// ========== 添加/编辑书籍 ==========
+const starInput=$('starInput');
+starInput.querySelectorAll('span').forEach(s=>{
+  s.addEventListener('click',()=>{curRating=+s.dataset.v;updateStars()});
+  s.addEventListener('mouseenter',()=>hlStars(+s.dataset.v));
+  s.addEventListener('mouseleave',()=>updateStars());
+});
+function hlStars(n){starInput.querySelectorAll('span').forEach(s=>s.classList.toggle('active',+s.dataset.v<=n))}
+function updateStars(){hlStars(curRating)}
+
+$('saveBookBtn').addEventListener('click',saveBook);
+function saveBook(){
+  const title=$('bookTitle').value.trim();
+  if(!title){toast('请输入书名');return}
+  const editId=$('editBookId').value;
+  const data={
+    id:editId||uid(), title,
+    author:$('bookAuthor').value.trim(), genre:$('bookGenre').value.trim(),
+    pages:parseInt($('bookPages').value)||0, status:$('bookStatus').value,
+    startDate:$('bookStartDate').value, endDate:$('bookEndDate').value,
+    rating:curRating,
+    createdAt:editId?(DB.books.find(b=>b.id===editId)||{}).createdAt||new Date().toISOString():new Date().toISOString()
+  };
+  const books=DB.books;
+  if(editId){const i=books.findIndex(b=>b.id===editId);if(i>=0)books[i]=data}
+  else books.unshift(data);
+  DB.saveBooks(books);
+  toast(editId?'书籍已更新':'书籍已添加');
+  resetBookForm();nav('bookshelf');
+}
+
+function editBook(id){
+  const b=DB.books.find(x=>x.id===id);if(!b)return;
+  $('editBookId').value=b.id;$('bookTitle').value=b.title;
+  $('bookAuthor').value=b.author||'';$('bookGenre').value=b.genre||'';
+  $('bookPages').value=b.pages||'';$('bookStatus').value=b.status;
+  $('bookStartDate').value=b.startDate||'';$('bookEndDate').value=b.endDate||'';
+  curRating=b.rating||0;updateStars();
+  $('formPageTitle').textContent='编辑书籍';$('cancelEditBtn').style.display='';
+  nav('add-book');
+}
+function cancelEdit(){resetBookForm();nav('bookshelf')}
+function resetBookForm(){
+  $('editBookId').value='';
+  ['bookTitle','bookAuthor','bookGenre','bookPages','bookStartDate','bookEndDate'].forEach(id=>$(id).value='');
+  $('bookStatus').value='want';curRating=0;updateStars();
+  $('formPageTitle').textContent='添加书籍';$('cancelEditBtn').style.display='none';
+}
+function deleteBook(id){
+  if(!confirm('确定删除此书籍？相关笔记不会被删除。'))return;
+  DB.saveBooks(DB.books.filter(b=>b.id!==id));toast('已删除');renderBookshelf();
+}
+function writeNoteFor(bookId){nav('notes');createNewNote(bookId)}
+
+// ========== 随笔 ==========
+function refreshNoteBookLinks(){
+  const sel=$('noteBookLink'),val=sel.value;
+  sel.innerHTML='<option value="">不关联书籍</option>'+DB.books.map(b=>`<option value="${b.id}">${esc(b.title)}</option>`).join('');
+  sel.value=val;
+}
+function renderNotesList(){
+  const list=$('notesList'),notes=DB.notes;
+  if(!notes.length){list.innerHTML='<div class="note-empty" style="padding:30px"><div class="note-empty-icon">📝</div><p>还没有随笔</p></div>';return}
+  list.innerHTML=notes.map(n=>{
+    const book=n.bookId?DB.books.find(b=>b.id===n.bookId):null;
+    return `<div class="note-item ${n.id===curNoteId?'active':''}" onclick="openNote('${n.id}')">
+      <div class="note-item-title">${esc(n.title||'无标题')}</div>
+      <div class="note-item-meta"><span>${fmtDate(n.date)}</span>${book?`<span>📖 ${esc(book.title)}</span>`:''}</div>
+      <div class="note-item-preview">${esc(n.body||'')}</div>
+    </div>`;
+  }).join('');
+}
+function createNewNote(bookId){
+  const note={id:uid(),title:'',body:'',bookId:bookId||'',date:new Date().toISOString()};
+  const notes=DB.notes;notes.unshift(note);DB.saveNotes(notes);
+  refreshNoteBookLinks();renderNotesList();openNote(note.id);
+}
+function openNote(id){
+  curNoteId=id;const n=DB.notes.find(x=>x.id===id);if(!n)return;
+  $('noteEmpty').style.display='none';
+  $('noteEditorContent').style.display='flex';
+  $('noteTitle').value=n.title||'';$('noteBody').value=n.body||'';
+  $('noteDate').textContent=fmtDate(n.date);
+  refreshNoteBookLinks();$('noteBookLink').value=n.bookId||'';
+  renderNotesList();
+}
+function openNoteById(id){nav('notes');openNote(id)}
+function saveCurrentNote(){
+  if(!curNoteId)return;const notes=DB.notes;
+  const n=notes.find(x=>x.id===curNoteId);if(!n)return;
+  n.title=$('noteTitle').value.trim();n.body=$('noteBody').value;
+  n.bookId=$('noteBookLink').value;n.updatedAt=new Date().toISOString();
+  DB.saveNotes(notes);renderNotesList();toast('随笔已保存');
+}
+function deleteCurrentNote(){
+  if(!curNoteId||!confirm('确定删除此随笔？'))return;
+  DB.saveNotes(DB.notes.filter(n=>n.id!==curNoteId));curNoteId=null;
+  $('noteEditorContent').style.display='none';$('noteEmpty').style.display='';
+  renderNotesList();toast('已删除');
+}
+
+// ========== 统计 ==========
+let charts={};
+function renderStats(){
+  const books=DB.books,notes=DB.notes;
+  const done=books.filter(b=>b.status==='done'),reading=books.filter(b=>b.status==='reading');
+  const pages=done.reduce((s,b)=>s+(b.pages||0),0);
+  $('statsGrid').innerHTML=`
+    <div class="stat-card"><div class="stat-number">${books.length}</div><div class="stat-label">总书籍</div></div>
+    <div class="stat-card"><div class="stat-number">${done.length}</div><div class="stat-label">已读完</div></div>
+    <div class="stat-card"><div class="stat-number">${reading.length}</div><div class="stat-label">在读中</div></div>
+    <div class="stat-card"><div class="stat-number">${pages.toLocaleString()}</div><div class="stat-label">总页数</div></div>
+    <div class="stat-card"><div class="stat-number">${notes.length}</div><div class="stat-label">随笔数</div></div>`;
+  renderMonthly(done);renderGenre(books);renderRating(done);renderTimeline(books,notes);
+}
+function initChart(id){if(charts[id])charts[id].dispose();charts[id]=echarts.init($(id));return charts[id]}
+
+function renderMonthly(done){
+  const c=initChart('monthlyChart'),months={};
+  done.forEach(b=>{const d=b.endDate||b.createdAt;if(!d)return;const k=d.slice(0,7);months[k]=(months[k]||0)+1});
+  const sorted=Object.keys(months).sort();
+  c.setOption({tooltip:{trigger:'axis'},grid:{top:16,right:16,bottom:28,left:40},
+    xAxis:{type:'category',data:sorted,axisLabel:{fontSize:11,color:'#6b5d4f'},axisLine:{lineStyle:{color:'#e5ddd2'}}},
+    yAxis:{type:'value',minInterval:1,axisLabel:{fontSize:11,color:'#6b5d4f'},splitLine:{lineStyle:{color:'#ede7dd'}}},
+    series:[{data:sorted.map(k=>months[k]),type:'bar',barWidth:28,itemStyle:{color:'#5a7247',borderRadius:[4,4,0,0]},emphasis:{itemStyle:{color:'#7d9a68'}}}]});
+}
+function renderGenre(books){
+  const c=initChart('genreChart'),genres={};
+  books.forEach(b=>{if(b.genre)genres[b.genre]=(genres[b.genre]||0)+1});
+  const data=Object.entries(genres).map(([name,value])=>({name,value}));
+  if(!data.length){c.clear();return}
+  c.setOption({tooltip:{trigger:'item',formatter:'{b}: {c} ({d}%)'},
+    series:[{type:'pie',radius:['38%','68%'],center:['50%','52%'],data,label:{fontSize:12,color:'#2c2418'},
+    itemStyle:{borderRadius:6,borderColor:'#fffdf9',borderWidth:2},
+    color:['#5a7247','#8b6914','#b5694d','#6b8fa3','#a37d6b','#7d9a68','#c4a35a','#d4936f'],emphasis:{scaleSize:8}}]});
+}
+function renderRating(done){
+  const c=initChart('ratingChart'),counts=[0,0,0,0,0];
+  done.forEach(b=>{if(b.rating>=1&&b.rating<=5)counts[b.rating-1]++});
+  c.setOption({tooltip:{trigger:'axis'},grid:{top:16,right:16,bottom:28,left:40},
+    xAxis:{type:'category',data:['1★','2★','3★','4★','5★'],axisLabel:{fontSize:11,color:'#6b5d4f'},axisLine:{lineStyle:{color:'#e5ddd2'}}},
+    yAxis:{type:'value',minInterval:1,axisLabel:{fontSize:11,color:'#6b5d4f'},splitLine:{lineStyle:{color:'#ede7dd'}}},
+    series:[{data:counts,type:'bar',barWidth:28,itemStyle:{color:'#c4a35a',borderRadius:[4,4,0,0]},emphasis:{itemStyle:{color:'#8b6914'}}}]});
+}
+function renderTimeline(books,notes){
+  const tl=$('timeline'),emptyTl=$('emptyTimeline'),items=[];
+  books.forEach(b=>{const d=b.endDate||b.startDate||b.createdAt;if(d)items.push({type:'book',date:d,title:b.title,desc:`${b.author||''}${b.genre?' · '+b.genre:''} — ${statusText(b.status)}${b.rating?' '+starsHtml(b.rating):''}`})});
+  notes.forEach(n=>{const book=n.bookId?books.find(b=>b.id===n.bookId):null;items.push({type:'note',date:n.date,title:n.title||'无标题随笔',desc:(book?'📖 '+book.title+' — ':'')+(n.body||'').slice(0,80)})});
+  items.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(!items.length){tl.innerHTML='';emptyTl.style.display='block';return}
+  emptyTl.style.display='none';
+  tl.innerHTML=items.slice(0,50).map((it,i)=>`
+    <div class="timeline-item ${it.type==='note'?'note-type':''}" style="animation-delay:${i*.05}s">
+      <div class="timeline-date">${fmtDate(it.date)} · ${it.type==='book'?'书籍':'随笔'}</div>
+      <div class="timeline-content"><h4>${esc(it.title)}</h4><p>${esc(it.desc)}</p></div>
+    </div>`).join('');
+}
+window.addEventListener('resize',()=>Object.values(charts).forEach(c=>c&&c.resize()));
+
+// ========== 数据管理 ==========
+function exportData(){
+  const data=DB.load();
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`墨痕_阅读数据_${new Date().toISOString().slice(0,10)}.json`;a.click();
+  toast('数据已导出');
+}
+function importData(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const imp=JSON.parse(e.target.result);
+      if(!imp.books&&!imp.notes){toast('无效的数据文件');return}
+      const cur=DB.load();
+      const bIds=new Set(cur.books.map(b=>b.id)),nIds=new Set(cur.notes.map(n=>n.id));
+      let bc=0,nc=0;
+      if(imp.books)imp.books.forEach(b=>{if(!bIds.has(b.id)){cur.books.push(b);bc++}});
+      if(imp.notes)imp.notes.forEach(n=>{if(!nIds.has(n.id)){cur.notes.push(n);nc++}});
+      DB.save(cur);toast(`导入成功：${bc}本书，${nc}条笔记`);
+      if(curPage==='bookshelf')renderBookshelf();if(curPage==='stats')renderStats();
+    }catch{toast('文件解析失败，请检查格式')}
+  };
+  reader.readAsText(file);event.target.value='';
+}
+function clearAllData(){
+  if(!confirm('确定清空所有数据？此操作不可恢复！'))return;
+  if(!confirm('再次确认：所有书籍和随笔将被永久删除。'))return;
+  DB.save({books:[],notes:[]});toast('所有数据已清空');
+  curNoteId=null;
+  if(curPage==='bookshelf')renderBookshelf();
+  if(curPage==='stats')renderStats();
+  if(curPage==='notes'){renderNotesList();$('noteEditorContent').style.display='none';$('noteEmpty').style.display=''}
+}
+
+// ========== 阅读日历 ==========
+let calYear,calMonth;
+(function(){const d=new Date();calYear=d.getFullYear();calMonth=d.getMonth()})();
+
+function calNav(dir){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++}if(calMonth<0){calMonth=11;calYear--}renderCalendar()}
+function calToday(){const d=new Date();calYear=d.getFullYear();calMonth=d.getMonth();renderCalendar()}
+
+function getCalEvents(){
+  const books=DB.books,notes=DB.notes,events={};
+  function addEv(dateStr,type,text){
+    if(!dateStr)return;
+    const key=dateStr.slice(0,10);
+    if(!events[key])events[key]=[];
+    events[key].push({type,text});
+  }
+  books.forEach(b=>{
+    if(b.startDate)addEv(b.startDate,'book',`开始阅读《${b.title}》`);
+    if(b.endDate)addEv(b.endDate,'book',`读完《${b.title}》${b.rating?' '+starsHtml(b.rating):''}`);
+    if(!b.startDate&&!b.endDate&&b.createdAt)addEv(b.createdAt,'book',`添加《${b.title}》到书架`);
+  });
+  notes.forEach(n=>{
+    const book=n.bookId?books.find(b=>b.id===n.bookId):null;
+    addEv(n.date,'note',`${n.title||'无标题随笔'}${book?' (📖'+book.title+')':''}`);
+  });
+  return events;
+}
+
+function renderCalendar(){
+  const events=getCalEvents();
+  const today=new Date();const todayKey=today.toISOString().slice(0,10);
+  $('calTitle').textContent=`${calYear}年 ${calMonth+1}月`;
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const daysInPrev=new Date(calYear,calMonth,0).getDate();
+  let html='';
+  const dows=['日','一','二','三','四','五','六'];
+  dows.forEach(d=>{html+=`<div class="cal-dow">${d}</div>`});
+  // Previous month padding
+  for(let i=firstDay-1;i>=0;i--){
+    const day=daysInPrev-i;
+    html+=`<div class="cal-day other">${day}</div>`;
+  }
+  // Current month
+  for(let d=1;d<=daysInMonth;d++){
+    const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evs=events[key]||[];
+    const isToday=key===todayKey;
+    const hasBook=evs.some(e=>e.type==='book');
+    const hasNote=evs.some(e=>e.type==='note');
+    const hasEvent=evs.length>0;
+    html+=`<div class="cal-day${isToday?' today':''}${hasEvent?' has-event':''}" ${hasEvent?`onclick="showCalDay('${key}')"`:''}>${d}<div class="cal-dots">${hasBook?'<span class="cal-dot book-dot"></span>':''}${hasNote?'<span class="cal-dot note-dot"></span>':''}</div></div>`;
+  }
+  // Next month padding
+  const totalCells=firstDay+daysInMonth;
+  const remaining=totalCells%7===0?0:7-totalCells%7;
+  for(let d=1;d<=remaining;d++){html+=`<div class="cal-day other">${d}</div>`}
+  $('calGrid').innerHTML=html;
+  $('calDetail').style.display='none';
+}
+
+function showCalDay(key){
+  const events=getCalEvents();
+  const evs=events[key]||[];
+  if(!evs.length)return;
+  const d=new Date(key+'T00:00:00');
+  $('calDetailTitle').textContent=d.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  $('calDetailList').innerHTML=evs.map(e=>`
+    <div class="cal-detail-item">
+      <span class="cal-detail-type ${e.type==='book'?'type-book':'type-note'}">${e.type==='book'?'书籍':'随笔'}</span>
+      ${esc(e.text)}
+    </div>`).join('');
+  $('calDetail').style.display='';
+}
+
+// ========== 初始化 ==========
+renderGenrePresets();
+renderBookshelf();
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"75124c326cb447fe934cde04713ae013","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
